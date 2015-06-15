@@ -30,6 +30,6 @@
   ],
   "dependencies": {
     "jquery": ">= 1.4.2",
-    "facebox": ">=1.4.0"
+    "facebox": ">=1.2.0"
   }
 }
