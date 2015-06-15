@@ -1,6 +1,6 @@
 {
   "name": "jquery.dirtyforms",
-  "main": "jquery.dirtyforms.js",
+  "main": "jquery.dirtyforms.min.js",
   "version": "1.0.0",
   "homepage": "https://github.com/snikch/jquery.dirtyforms",
   "authors": [
