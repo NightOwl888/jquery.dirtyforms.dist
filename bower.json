@@ -5,8 +5,8 @@
   "homepage": "https://github.com/snikch/jquery.dirtyforms",
   "authors": [
     "Mal Curtis <mal@mal.co.nz>",
-	"Shad Storhaug <shad@shadstorhaug.com>",
-	"Nick Coyne <nick@codevader.com>"
+    "Shad Storhaug <shad@shadstorhaug.com>",
+    "Nick Coyne <nick@codevader.com>"
   ],
   "description": "A jQuery Plugin that monitors forms for change and alerts the user before leaving the page.",
   "keywords": [
@@ -27,7 +27,7 @@
     "node_modules",
     "bower_components",
     "*.json",
-	".git"
+    ".git"
   ],
   "dependencies": {
     "jquery": ">= 1.4.2",
