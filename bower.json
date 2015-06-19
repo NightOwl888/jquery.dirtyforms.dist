@@ -27,8 +27,7 @@
     "node_modules",
     "bower_components",
     "*.json",
-	".git",
-    "README.md"
+	".git"
   ],
   "dependencies": {
     "jquery": ">= 1.4.2",

@@ -4,7 +4,8 @@
   "description": "Dirty Forms is a jQuery plugin to help prevent users from losing data when editing forms.",
   "main": "jquery.dirtyforms.min.js",
   "files": [
-	"jquery.dirtyforms.*"
+	"jquery.dirtyforms.*",
+	"LICENSE*"
   ],
   "dependencies": {
     "jquery": ">=1.4.2",
