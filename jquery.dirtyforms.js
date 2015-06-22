@@ -2,9 +2,31 @@
 	Copyright 2010 Mal Curtis
 */
 
-if (typeof jQuery == 'undefined') throw ("jQuery Required");
+// Support for UMD: https://github.com/umdjs/umd/blob/master/jqueryPluginCommonjs.js
+// This allows for tools such as Browserify to compose the components together into a single HTTP request.
+(function (factory) {
+    if (typeof define === 'function' && define.amd) {
+        // AMD. Register as an anonymous module.
+        define(['jquery'], factory);
+    } else if (typeof exports === 'object') {
+        // Node/CommonJS
+        module.exports = factory(require('jquery'));
+    } else {
+        // Browser globals
+        factory(jQuery);
+    }
+}(function ($) {
+    if (typeof $(document).on !== 'function') {
+        if (typeof $(document).delegate === 'function') {
+            // Patch jQuery 1.4.2 - 1.7 with an on function (that uses delegate).
+            $.fn.on = function (events, selector, data, handler) {
+                $(this).delegate(selector, events, data, handler);
+            };
+        } else {
+            throw ('jQuery 1.4.2 or higher is required by jquery.dirtyforms');
+        }
+    }
 
-(function ($) {
     // Public General Plugin methods $.DirtyForms
     $.extend({
         DirtyForms: {
@@ -37,7 +59,7 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
                 },
                 stash: function () {
                     var fb = $('#facebox');
-                    return ($.trim(fb.html()) == '' || fb.css('display') != 'block') ?
+                    return ($.trim(fb.html()) === '' || fb.css('display') != 'block') ?
 					   false :
 					   $('#facebox .content').clone(true);
                 },
@@ -107,15 +129,15 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
                 var selectionSelector = "input[type='checkbox'],input[type='radio'],select";
                 var resetSelector = "input[type='reset']";
 
-                // For jQuery 1.7+, use on()
-                if (typeof $(document).on === 'function') {
-                    $(this).on('focus change', inputSelector, onFocus);
-                    $(this).on('change', selectionSelector, onSelectionChange);
-                    $(this).on('click', resetSelector, onReset);
-                } else { // For jQuery 1.4.2 - 1.7, use delegate()
-                    $(this).delegate(inputSelector, 'focus change', onFocus);
-                    $(this).delegate(selectionSelector, 'change', onSelectionChange);
-                    $(this).delegate(resetSelector, 'click', onReset);
+                $(this).on('focus change', inputSelector, onFocus);
+                $(this).on('change', selectionSelector, onSelectionChange);
+                $(this).on('click', resetSelector, onReset);
+
+                // Initialize settings with the currently focused element (autofocus)
+                var focused = $(this).find(inputSelector).filter(':focus');
+                if (focused) {
+                    settings.focused.element = focused;
+                    settings.focused.value = focused.val();
                 }
             });
         },
@@ -169,7 +191,7 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
                 var node = this;
 
                 // remove the current dirty class
-                $(node).removeClass($.DirtyForms.dirtyClass)
+                $(node).removeClass($.DirtyForms.dirtyClass);
 
                 if ($(node).is('form')) {
                     // remove all dirty classes from children
@@ -177,7 +199,7 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
                 } else {
                     // if this is last dirty child, set form clean
                     var $form = $(node).parents('form');
-                    if ($form.find(':dirty').length == 0) {
+                    if ($form.find(':dirty').length === 0) {
                         $form.removeClass($.DirtyForms.dirtyClass);
                     }
                 }
@@ -209,13 +231,13 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
     // DO NOT ADD MORE METHODS LIKE THESE, ADD METHODS WHERE INDICATED ABOVE
     $.fn.setDirty = function () {
         return this.dirtyForms('setDirty');
-    }
+    };
     $.fn.isDirty = function () {
         return this.dirtyForms('isDirty');
-    }
+    };
     $.fn.cleanDirty = function () {
         return this.dirtyForms('setClean');
-    }
+    };
 
     // Private Properties and Methods
     var settings = $.DirtyForms = $.extend({
@@ -234,56 +256,59 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
 
     var onReset = function () {
         $(this).parents('form').dirtyForms('setClean');
-    }
+        if (settings.onFormCheck) {
+            settings.onFormCheck();
+        }
+    };
 
     var onSelectionChange = function () {
+        if ($(this).hasClass($.DirtyForms.ignoreClass)) return;
         $(this).dirtyForms('setDirty');
-    }
+        if (settings.onFormCheck) {
+            settings.onFormCheck();
+        }
+    };
 
     var onFocus = function () {
-        element = $(this);
-        if (focusedIsDirty()) {
-            settings.focused['element'].dirtyForms('setDirty');
+        var $this = $(this);
+        if (focusedIsDirty() && !$this.hasClass($.DirtyForms.ignoreClass)) {
+            settings.focused.element.dirtyForms('setDirty');
+            if (settings.onFormCheck) {
+                settings.onFormCheck();
+            }
         }
-        settings.focused['element'] = element;
-        settings.focused['value'] = element.val();
-    }
+        settings.focused.element = $this;
+        settings.focused.value = $this.val();
+    };
+
     var focusedIsDirty = function () {
         // Check, whether the value of focused element has changed
-        return settings.focused["element"] &&
-			(settings.focused["element"].val() !== settings.focused["value"]);
-    }
+        return settings.focused.element &&
+			(settings.focused.element.val() !== settings.focused.value);
+    };
 
     var dirtylog = function (msg) {
         if (!$.DirtyForms.debug) return;
         msg = "[DirtyForms] " + msg;
-        settings.hasFirebug ?
-			console.log(msg) :
-			settings.hasConsoleLog ?
-				window.console.log(msg) :
-				alert(msg);
-    }
+        if (settings.hasFirebug) {
+            console.log(msg);
+        } else if (settings.hasConsoleLog) {
+            window.console.log(msg);
+        } else {
+            alert(msg);
+        }
+    };
 
     var bindExit = function () {
         if (settings.exitBound) return;
 
         var inIframe = (top !== self);
 
-        // For jQuery 1.7+, use on()
-        if (typeof $(document).on === 'function') {
-            $(document).on('click', 'a', aBindFn);
-            $(document).on('submit', 'form', formBindFn);
-            if (settings.watchParentDocs && inIframe) {
-                $(top.document).on('click', 'a', aBindFn);
-                $(top.document).on('submit', 'form', formBindFn);
-            }
-        } else { // For jQuery 1.4.2 - 1.7, use delegate()
-            $(document).delegate('a', 'click', aBindFn);
-            $(document).delegate('form', 'submit', formBindFn);
-            if (settings.watchParentDocs && inIframe) {
-                $(top.document).delegate('a', 'click', aBindFn);
-                $(top.document).delegate('form', 'submit', formBindFn);
-            }
+        $(document).on('click', 'a[href]', aBindFn);
+        $(document).on('submit', 'form', formBindFn);
+        if (settings.watchParentDocs && inIframe) {
+            $(top.document).on('click', 'a[href]', aBindFn);
+            $(top.document).on('submit', 'form', formBindFn);
         }
 
         $(window).bind('beforeunload', beforeunloadBindFn);
@@ -292,7 +317,7 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
         }
 
         settings.exitBound = true;
-    }
+    };
 
     var getIgnoreAnchorSelector = function () {
         var result = '';
@@ -303,24 +328,26 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
             }
         });
         return result;
-    }
+    };
 
     var aBindFn = function (ev) {
+        var a = $(this);
+
         // Filter out any anchors the helpers wish to exclude
-        if (!$(this).is(getIgnoreAnchorSelector())) {
+        if (!a.is(getIgnoreAnchorSelector()) && typeof a.attr('href') != 'undefined') {
             bindFn(ev);
         }
-    }
+    };
 
     var formBindFn = function (ev) {
         settings.currentForm = this;
         bindFn(ev);
-    }
+    };
 
     var beforeunloadBindFn = function (ev) {
         var result = bindFn(ev);
 
-        if (result && settings.doubleunloadfix != true) {
+        if (result && settings.doubleunloadfix !== true) {
             dirtylog('Before unload will be called, resetting');
             settings.deciding = false;
         }
@@ -341,7 +368,7 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
             // For Safari
             return result;
         }
-    }
+    };
 
     var bindFn = function (ev) {
         dirtylog('Entering: Leaving Event fired, type: ' + ev.type + ', element: ' + ev.target + ', class: ' + $(ev.target).attr('class') + ' and id: ' + ev.target.id);
@@ -386,11 +413,11 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
             return true;
         }
 
-        settings.deciding = true;
-        settings.decidingEvent = ev;
-        dirtylog('Setting deciding active');
+        if (settings.dialog) {
+            settings.deciding = true;
+            settings.decidingEvent = ev;
+            dirtylog('Setting deciding active');
 
-        if (settings.dialog !== false) {
             dirtylog('Saving dialog content');
             settings.dialogStash = settings.dialog.stash();
             dirtylog(settings.dialogStash);
@@ -404,7 +431,9 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
             dirtylog('Returning to beforeunload browser handler with: ' + settings.message);
             return settings.message;
         }
-        if (!settings.dialog) return;
+        if (!settings.dialog) {
+            return;
+        }
 
         ev.preventDefault();
         ev.stopImmediatePropagation();
@@ -419,7 +448,7 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
         dirtylog('Deferring to the dialog');
         settings.dialog.fire($.DirtyForms.message, $.DirtyForms.title);
         settings.dialog.bind();
-    }
+    };
 
     var isDifferentTarget = function (ev) {
         var aTarget = $(ev.target).attr('target');
@@ -427,7 +456,7 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
             aTarget = aTarget.toLowerCase();
         }
         return (aTarget === '_blank');
-    }
+    };
 
     var choiceCommit = function (ev) {
         if (settings.deciding) {
@@ -439,7 +468,7 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
             }
             $(document).trigger('choicecommitAfter.dirtyforms');
         }
-    }
+    };
 
     var decidingCancel = function (ev) {
         ev.preventDefault();
@@ -451,16 +480,16 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
         $(document).trigger('decidingcancelledAfter.dirtyforms');
         settings.dialogStash = false;
         settings.deciding = settings.currentForm = settings.decidingEvent = false;
-    }
+    };
 
     var decidingContinue = function (ev) {
-        window.onbeforeunload = null; // fix for chrome
+        clearUnload(); // fix for chrome/safari
         ev.preventDefault();
         settings.dialogStash = false;
         $(document).trigger('decidingcontinued.dirtyforms');
         refire(settings.decidingEvent);
         settings.deciding = settings.currentForm = settings.decidingEvent = false;
-    }
+    };
 
     var clearUnload = function () {
         // I'd like to just be able to unbind this but there seems
@@ -469,7 +498,7 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
         $(window).unbind('beforeunload', beforeunloadBindFn);
         window.onbeforeunload = null;
         $(document).trigger('beforeunload.dirtyforms');
-    }
+    };
 
     var refire = function (e) {
         $(document).trigger('beforeRefire.dirtyforms');
@@ -482,7 +511,9 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
                 if (!event.isDefaultPrevented()) {
                     var anchor = $(e.target).closest('[href]');
                     dirtylog('Sending location to ' + anchor.attr('href'));
-                    location.href = anchor.attr('href');
+                    if (anchor.attr('href') !== undefined) {
+                        location.href = anchor.attr('href');
+                    }
                     return;
                 }
                 break;
@@ -502,6 +533,6 @@ if (typeof jQuery == 'undefined') throw ("jQuery Required");
                 target.trigger(e.type);
                 break;
         }
-    }
+    };
 
-})(jQuery);
+}));
