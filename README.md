@@ -51,12 +51,12 @@ There are several different ways to get the code. Some examples below:
 #### CDN
 Dirty Forms is available over jsDelivr CDN and can directly included to every page.
 ```HTML
-<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/1.2.2/jquery.dirtyforms.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/1.2.3/jquery.dirtyforms.min.js"></script>
 ```
 
 jsDelivr also supports [on-the-fly concatenation of files](https://github.com/jsdelivr/jsdelivr#load-multiple-files-with-single-http-request), so you can reference only 1 URL to get jQuery, jquery.facebox, and jquery.dirtyforms in one request.
 ```HTML
-<script type="text/javascript" src="//cdn.jsdelivr.net/g/jquery@1.11.3,jquery.facebox,jquery.dirtyforms@1.2.2"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/g/jquery@1.11.3,jquery.facebox,jquery.dirtyforms@1.2.3"></script>
 ```
 
 #### Self-Hosted
@@ -93,7 +93,7 @@ A [SourceMap](https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-
 ####CDN
 
 ```HTML
-<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/1.2.2/jquery.dirtyforms.min.js.map"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/1.2.3/jquery.dirtyforms.min.js.map"></script>
 ```
 
 #### Package Managers
@@ -443,7 +443,7 @@ It is important to trap the `ESC` key (character code 27) in the keydown event i
 $(document).keydown(function(e) {
 
 	// Look for the ESC key
-	if (e.keyCode == 27) {
+	if (e.which == 27) {
 	
 		// Cancel the event so it doesn't bubble
 		e.preventDefault();
@@ -539,7 +539,7 @@ fire : function(message, title){
 bind : function(){
 	$(document).bind('keydown.facebox', function (e) {
 		// Intercept the escape key and send the event to Dirty Forms
-		if (e.keyCode === 27) {
+		if (e.which === 27) {
 			$(document).trigger('close.facebox');
             $.DirtyForms.decidingCancel(e);
 		}
@@ -613,7 +613,7 @@ $.DirtyForms.dialog = {
 		// Calling dialog('close') will fire the 'dialogclose' event,
 		// which will in turn commit the choice to Dirty Forms.
 		$(document).bind('keydown', function(e) {
-			if (e.keyCode == 27) {
+			if (e.which == 27) {
 				e.preventDefault();
 				$.DirtyForms.choiceContinue = false;
                 $('#unsavedChanges').dialog('close');

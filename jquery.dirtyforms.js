@@ -10,21 +10,20 @@
         define(['jquery'], factory);
     } else if (typeof exports === 'object') {
         // Node/CommonJS
-        module.exports = factory(require('jquery'));
+        module.exports = factory(require('jquery'), window, document);
     } else {
         // Browser globals
-        factory(jQuery);
+        factory(jQuery, window, document);
     }
-}(function ($) {
-    if (typeof $(document).on !== 'function') {
-        if (typeof $(document).delegate === 'function') {
-            // Patch jQuery 1.4.2 - 1.7 with an on function (that uses delegate).
-            $.fn.on = function (events, selector, data, handler) {
-                return $(this).delegate(selector, events, data, handler);
-            };
-        } else {
-            throw ('jQuery 1.4.2 or higher is required by jquery.dirtyforms');
-        }
+}(function ($, window, document, undefined) {
+    // Use ECMAScript 5's strict mode
+    "use strict";
+
+    if (!$.fn.on) {
+        // Patch jQuery 1.4.2 - 1.7 with an on function (that uses delegate).
+        $.fn.on = function (events, selector, data, handler) {
+            return this.delegate(selector, events, data, handler);
+        };
     }
 
     // Public General Plugin methods $.DirtyForms
@@ -40,14 +39,18 @@
             dialog: {
                 selector: '#facebox .content',
                 fire: function (message, title) {
-                    var content = '<h1>' + title + '</h1><p>' + message + '</p><p><a href="#" class="ignoredirty button medium red continue">Continue</a><a href="#" class="ignoredirty button medium cancel">Stop</a>';
+                    var content = '<h1>' + title + '</h1><p>' + message + '</p><p><a href="#" class="ignoredirty button medium red continue">Continue</a><a href="#" class="ignoredirty button medium cancel">Stop</a></p>';
                     $.facebox(content);
                 },
                 bind: function () {
                     var close = function (decision) {
                         return function (e) {
-                            if (e.type !== 'keydown' || (e.type === 'keydown' && e.keyCode === 27)) {
-                                $(document).trigger('close.facebox');
+                            if (e.type !== 'keydown' || (e.type === 'keydown' && e.which === 27)) {
+                                // Facebox hack: If we call close when returning from the stash, the
+                                // stash dialog will close, so we guard against calling close in that case. 
+                                if (!settings.dialogStash) {
+                                    $(document).trigger('close.facebox');
+                                }
                                 decision(e);
                             }
                         };
@@ -175,21 +178,27 @@
             this.each(function (e) {
                 if ($(this).hasClass(settings.dirtyClass)) {
                     isDirty = true;
-                    return true;
+                    // Return false to break out of the .each() function
+                    return false;
                 }
             });
+            // Skip helpers if we are already dirty.
+            if (isDirty) return true;
+
             $.each(settings.helpers, function (key, obj) {
                 if ("isDirty" in obj) {
                     if (obj.isDirty(node)) {
                         isDirty = true;
-                        return true;
+                        // Return false to break out of the .each() function
+                        return false;
                     }
                 }
                 // For backward compatibility, we call isNodeDirty (deprecated)
                 if ("isNodeDirty" in obj) {
                     if (obj.isNodeDirty(node)) {
                         isDirty = true;
-                        return true;
+                        // Return false to break out of the .each() function
+                        return false;
                     }
                 }
             });
@@ -482,8 +491,7 @@
     };
 
     var refire = function (e) {
-        $(document).trigger('beforeRefire.dirtyforms')
-                   .trigger('beforeunload.dirtyforms');
+        $(document).trigger('beforeRefire.dirtyforms');
         if (e.type === 'click') {
             dirtylog("Refiring click event");
             var event = new $.Event('click');
