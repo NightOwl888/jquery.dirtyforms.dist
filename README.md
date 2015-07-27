@@ -11,21 +11,20 @@ Oh, and it's pretty easy to use.
 ```javascript
 $('form').dirtyForms();
 ```
-
-Existing solutions were not flexible enough, so I wrote this to make sure that all of our use cases at Learnable would be supported. This included using TinyMCE as a rich text editor and ensuring dirty tinymce instances mark their form as dirty. I've also ensured that event bubbling on links and forms are propagated correctly. Dirty Forms will only attempt to alert the user if the event has not had the preventDefault() method called, and will accordingly refire events if the user chooses to continue from the page - ensuring all click handlers, and form submission handlers are correctly fired. For this reason, Dirty Forms should be the last jQuery plugin included, as it needs to be the last bound handler in the event stack (except of course for Dirty Forms [helpers](#helpers) and [dialog modules](#dialogs)).
-
-The jQuery `.on()` method (or `.delegate()` method in jQuery prior to version 1.7) is used to attach click and submit handlers so even elements that are introduced to the page after the page has loaded, e.g. loaded dynamically through AJAX, will be handled correctly, and a 'form stash' was created to capture and save event targets at the beginning of the event / decision stage so that elements that are no longer in the DOM can still have events fired on them (e.g. when a form is in a modal box, then the modal box is replaced by the Dirty Forms confirmation, the form will be stashed, and if the event is refired, it will be added back to the DOM then have the event triggered on it).
+Existing solutions were not flexible enough, so Dirty Forms was created to support a wider range of scenarios including support for dynamically added inputs and forms, TinyMCE and CKEditor rich text editor "dirtyness" support, custom widget "dirtyness" support, interoperability with any dialog framework (or the browser's built-in dialog), a "stash" that can be used in cases where dialogs don't have stacking support and you want to have a form inside of a dialog, and correct handling of events to refire when the user decides to proceed to an off-page destination.
 
 ## Features
 
+- NO dependencies (except for jQuery of course).
 - Supports multiple forms.
 - Works on forms of any size.
 - Wide browser support.
+- Advanced state management - tracks the original values of fields so they are "clean" when reset to the original value.
 - Works with your existing dialog framework for the best user experience (optional).
 - Falls back to the browser's dialog (if the browser supports it).
-- Pluggable helper system that reads and updates the dirty state of common rich text editor frameworks (optional).
-- IFrame support (Fires the dialog when the page that references Dirty Forms is hosted within an IFrame).
-- Small size (about 6 KB minified).
+- Pluggable helper system that reads and updates the dirty state of custom widgets and common rich text editor frameworks (optional).
+- Event handler customization (for IFrame support).
+- Small size (about 2.5 KB gzipped).
 - Universal Module Definition (UMD) support for AMD, Node/CommonJS, Browserify, etc.
 - Hosted on jsDelivr CDN for easy combining of modules into a single HTTP request.
 
@@ -39,24 +38,24 @@ The jQuery `.on()` method (or `.delegate()` method in jQuery prior to version 1.
 ## Prerequisites
 
 - [jQuery](http://jquery.com) (>= 1.4.2)
-- [jquery.facebox](https://github.com/NightOwl888/facebox) (>= 1.2.0) 
-
-**NOTE:** If you set `$.DirtyForms.dialog = false;`, you can remove facebox as a prerequisite. See the [Dialogs](#dialogs) section for details about interoperability with other dialogs.
 
 > If you are using a [Package Manager](#package-managers), these dependencies will be installed automatically, but depending on your environment you may still need to add references to them manually.
 
 ## Download & Installation
+
+> Dirty Forms should be the last jQuery plugin included in the page, as it needs to be the last bound handler in the event stack (except of course for Dirty Forms [helpers](#helpers) and [dialog modules](#dialogs)).
+
 There are several different ways to get the code. Some examples below:
 
 #### CDN
 Dirty Forms is available over jsDelivr CDN and can directly included to every page.
 ```HTML
-<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/1.2.3/jquery.dirtyforms.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/2.0.0-beta00001/jquery.dirtyforms.min.js"></script>
 ```
 
-jsDelivr also supports [on-the-fly concatenation of files](https://github.com/jsdelivr/jsdelivr#load-multiple-files-with-single-http-request), so you can reference only 1 URL to get jQuery, jquery.facebox, and jquery.dirtyforms in one request.
+jsDelivr also supports [on-the-fly concatenation of files](https://github.com/jsdelivr/jsdelivr#load-multiple-files-with-single-http-request), so you can reference only 1 URL to get jQuery and jquery.dirtyforms in one request.
 ```HTML
-<script type="text/javascript" src="//cdn.jsdelivr.net/g/jquery@1.11.3,jquery.facebox,jquery.dirtyforms@1.2.3"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/g/jquery@1.11.3,jquery.dirtyforms@2.0.0-beta00001"></script>
 ```
 
 #### Self-Hosted
@@ -93,7 +92,7 @@ A [SourceMap](https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-
 ####CDN
 
 ```HTML
-<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/1.2.3/jquery.dirtyforms.min.js.map"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/2.0.0-beta00001/jquery.dirtyforms.min.js.map"></script>
 ```
 
 #### Package Managers
@@ -107,26 +106,78 @@ jquery.dirtyforms.min.js.map
 ## Usage
 
 ```javascript
-// Enable for all forms
-$('form').dirtyForms();
+$(function() {
 
-// Enable for just forms of class 'sodirty'
-$('form.sodirty').dirtyForms();
+	// Enable for all forms.
+	$('form').dirtyForms();
 
-// Enable Debugging
-$.DirtyForms.debug = true;
+	// Enable for just forms of class 'sodirty'.
+	$('form.sodirty').dirtyForms();
 
-// Two custom selectors are available
-// Select all forms that are dirty
-$('form:dirty');
+	// Customize the title and message.
+	// Note that title is not supported by browser dialogs, so you should 
+	// only set it if you are using a custom dialog or dialog module.
+	$('form').dirtyForms({ 
+		dialog: { title: 'Wait!' }, 
+		message: 'You forgot to save your details. If you leave now, they will be lost forever.' 
+	});
 
-// Select all forms that are being watched for changes
-$('form:dirtylistening');
+	// Enable Debugging (non-minified file only).
+	$('form').dirtyForms({ debug: true });
+
+	// Check if anything inside a div with CSS class watch is dirty.
+	if ($('div.watch').dirtyForms('isDirty')) {
+		// There was something dirty inside of the div
+	}
+
+	// Select all forms that are dirty, and set them clean.
+	// This will make them forget the current dirty state and any changes
+	// after this call will make the form dirty again.
+	$('form:dirty').dirtyForms('setClean');
+
+	// Rescan to sync the dirty state with any dynamically added forms/fields
+	// or changes to the ignore state. This comes in handy when styling fields
+	// with CSS that are dirty.
+	$('form').dirtyForms('rescan');
+
+	// Select all forms that are listening for changes.
+	$('form:dirtylistening');
+
+	// Enable/disable the reset and submit buttons when the state transitions
+	// between dirty and clean. You will need to first set the initial button
+	// state to disabled (either in JavaScript or by setting the attributes in HTML).
+	$('form').find('[type="reset"],[type="submit"]').attr('disabled', 'disabled');
+	$('form').on('dirty.dirtyforms clean.dirtyforms', function (ev) {
+        var $form = $(ev.target);
+        var $submitResetButtons = $form.find('[type="reset"],[type="submit"]');
+        if (ev.type === 'dirty') {
+            $submitResetButtons.removeAttr('disabled');
+        } else {
+            $submitResetButtons.attr('disabled', 'disabled');
+        }
+    });
+
+	// Add a form dynamically and begin tracking it.
+	var $form = $('<form action="/" id="watched-form" method="post">' +
+		'<input id="inputa" type="text" />' +
+		'<button id="submita" type="submit" value="Submit">Submit</button>' +
+		'</form>');
+	$('body').append($form);
+	$form.dirtyForms();
+
+});
+
 ```
 
 ## Ignoring Things
 
-Simply add the value of `$.DirtyForms.ignoreClass` to any elements you wish to ignore, and Dirty Forms will ignore them.
+Set the `ignoreSelector` option to ignore specific fields, anchors, or buttons.
+
+```
+$('form').dirtyForms({ ignoreSelector: 'a.ignore-me' });
+```
+
+Alternatively, add the value of `$.DirtyForms.ignoreClass` to any elements you wish to ignore, and Dirty Forms will ignore them.
 
 ```javascript
 $('#ignored-element').addClass($.DirtyForms.ignoreClass);
@@ -154,158 +205,195 @@ You can re-enable elements so Dirty Forms watches them again simply by removing 
 $('html').removeClass($.DirtyForms.ignoreClass);
 ```
 
+### Default Anchor Ignoring Behavior
+
+The default behavior ignores anchor tags under the following scenarios. If you want an anchor to be ignored for any other purpose, you should use the `ignoreClasss` either on the anchor itself or an ancestor container. The default behavior can be changed by overriding the event handling (see [Event Handler Customization](#event-handler-customization)).
+
+#### `target="_blank"`
+
+If the target is a blank browser window, we assume that the page is not going to reload because (at least in theory) a new browser or tab will open. Note that if the target attribute is changed dynamically, the anchor tag will automatically be un-ignored.
+
+```html
+<a href="http://www.google.com" target="_blank">Go to Google</a>
+```
+
+#### No HREF Attribute
+
+If the href attribute is missing, the link cannot navigate to another page. Note that if the href attribute is added dynamically, the anchor tag will automatically be un-ignored.
+
+```html
+<a>Go Nowhere</a>
+```
+
+#### onClick `return false;`
+
+If the onClick event returns `false`, the click will be ignored by Dirty Forms.
+
+```html
+<a href="http://www.google.com" onclick="alert('This click is ignored');return false;">Go to Google</a>
+```
+
+> **NOTE:** Due to a bug in jQuery < 1.5, Dirty Forms will not ignore anchors in this case, so you will need to use the `ignoreClass` instead.
+
+#### `.preventDefault()` is Called
+
+If the click event handler calls `.preventDefault()` on its event, Dirty Forms will ignore the click.
+
+```html
+<a id="google-link" href="http://www.google.com">Go to Google</a>
+```
+```javascript
+$('#google-link').click(function (event) {
+    // Cancel the default browser action
+	event.preventDefault();
+});
+```
+
 ## Options
 
-The following options are available to set via **$.DirtyForms.OPTIONNAME = OPTIONVALUE** or get via **OPTIONVALUE = $.DirtyForms.OPTIONNAME**
+The following options are available to set during declaration of `.dirtyForms()` or alternatively via **$.DirtyForms.OPTIONNAME = OPTIONVALUE** or get via **OPTIONVALUE = $.DirtyForms.OPTIONNAME**.
+
+```javascript
+$('form').dirtyForms({ message: 'Doh! You forgot to save.' });
+
+// OR
+
+$.DirtyForms.message = 'Doh! You forgot to save.';
+```
 
 | Name  | Type  | Default  | Description  |  
 |---|---|---|---|
-| **title**  | string  | `Are you sure you want to do that?`  | Sets the title of the dialog (JavaScript/CSS dialog only).  |  
 | **message**  | string  | `You've made changes on this page which aren't saved. If you leave you will lose these changes.`  | Sets the message of the dialog (whether JavaScript/CSS dialog or the browser's built in dialog - note that some browsers do not show this message).   |   
-| **ignoreClass**  | string  | `ignoredirty` | The CSS class applied to elements that you wish to be ignored by Dirty Forms. This class can also be applied to container elements (such as `<div>` or `<form>`) to ignore every element within the container.  |  
 | **dirtyClass**  | string  | `dirty`  | The class applied to elements and forms when they're considered dirty. Note you can use this to style the elements to make them stand out if they are dirty (or for debugging).  |  
 | **listeningClass**  | string  | `dirtylisten`  | The class applied to elements that are having their inputs monitored for change.  |  
-| **choiceContinue**  | bool  | `false`  | Set to true from the dialog to indicate to continue execution of the link or button that was clicked or false to cancel. Execution of the choice will be deferred until `choiceCommit()` is called.  |  
-| **helpers** | string  | `[]`  | An array for helper objects. See [Helpers](#helpers) below.  |  
-| **dialog**  | string  | A Facebox dialog object  | An object that will be used to fire the JavaScript/CSS dialog. See [Dialogs](#dialogs) below.  |  
-| **debug**  | bool  | `false`   | Set to true to log messages to the console (or firebug). If your browser doesn't support this, there will be alerts instead.  |  
+| **ignoreClass**  | string  | `dirtyignore` | The CSS class applied to elements that you wish to be ignored by Dirty Forms. This class can also be applied to container elements (such as `<div>` or `<form>`) to ignore every element within the container.  |  
+| **ignoreSelector**  | string  | `''` | A jQuery selector that can be set to ignore specific elements.  |  
+| **fieldSelector**  | string  | `input:not([type='button'],[type='image'],[type='submit'],[type='reset'],[type='file'],[type='search']),select,textarea` | A jQuery selector indicating which input fields to include in the scan. |  
+| **helpers** | Array  | `[]`  | An array for helper objects. See [Helpers](#helpers) below.  |  
+| **dialog**  | object  | `false`  | An object that will be used to fire the JavaScript/CSS dialog. A `false` setting indicates to always use the browser's dialog. See [Dialogs](#dialogs) below.  |  
+| **debug**  | boolean  | `false`   | Set to `true` to log messages to the console (or firebug). If your browser doesn't support this, there will be alerts instead.  |  
 
 > **NOTE:** **debug** is not available in the minified version. If you need to turn this on, be sure to switch the file reference to the uncompressed `jquery.dirtyforms.js` file. 
 
 ## Public Methods
 
-#### ```$.DirtyForms.isDirty()```
+#### ```.dirtyForms( options )```
 
-Returns true if any watched elements (that are not ignored) are considered dirty.
-
-
-#### ```$('form#my-watched-form').dirtyForms()```
-
-Starts watching the supplied elements (forms) for descendant input changes. To watch all forms, simply use the `'form'` selector.
+Initializes Dirty Forms, overrides any of the default options, and stores the original values of the fields of all of the forms that match or are descendants of the selector. The `scan.dirtyforms` event is triggered for each form that is found. To scan all forms, simply use the `'form'` selector.
 
 ```javascript
 $('form').dirtyForms();
 ```
 
+##### `options` (Optional)
 
-#### `var isDirty = $('form#my-watched-form').dirtyForms('isDirty')`
-
-Returns true if the provided element is considered dirty.
-
-
-#### `$('form#my-watched-form').dirtyForms('setDirty')`
-
-Marks the provided element as dirty by adding the `dirtyClass`. If the element is within a form, the form is also marked dirty with the `dirtyClass`.
-
-
-#### `$('form#my-watched-form').dirtyForms('setClean')`
-
-Marks the provided form or element as clean. In other words, removes the `dirtyClass`. If the operation marks all elements within a form clean, it will also mark the form clean.
-
-
-#### `$.DirtyForms.choiceCommit( event )`
-
-This method should be called after the dialog is closed to commit the choice that was specified in `$.DirtyForms.choiceContinue()`. This method will cascade the call to either `$.DirtyForms.decidingContinue()` or `$.DirtyForms.decidingCancel()` automatically, so there is no need to use them in conjunction with this method.
-
-##### event (Required)
-
-A cancelable event.
-
-> See the [Dialogs](#dialogs) section for an example of how to use this method.
-
-
-#### `$.DirtyForms.decidingContinue( event )`
-
-This method should be called from the dialog to refire the event and continue following the link or button that was clicked.
-
-##### event (Required)
-
-A cancelable event.
-
-> See the [Dialogs](#dialogs) section for an example of how to use this method.
-
-
-#### `$.DirtyForms.decidingCancel( event )`
-
-This method should be called from the dialog to indicate not to move on to the page of the button or link that was clicked. Note that this method will automatically cancel the event.
-
-##### event (Required)
-
-A cancelable event.
-
-> See the [Dialogs](#dialogs) section for an example of how to use this method.
-
-
-#### `$.DirtyForms.isDeciding()`
-
-This method will return true if the dialog has fired and neither `$.DirtyForms.decidingCancel()` or `$.DirtyForms.decidingContinue()` has yet been called. It indicates that the dialog has fired, but the user has not yet made a decision.
-
-
-#### `$('form#my-watched-form').isDirty()` (Deprecated)
-
-Please use [`$('form#my-watched-form').dirtyForms('isDirty')`](#var-isdirty--formmy-watched-formdirtyformsisdirty) instead.
-
-
-#### `$('form#my-watched-form').setDirty()` (Deprecated)
-
-Please use [`$('form#my-watched-form').dirtyForms('setDirty')`](#formmy-watched-formdirtyformssetdirty) instead.
-
-
-#### `$('form#my-watched-form').cleanDirty()` (Deprecated)
-
-Please use [`$('form#my-watched-form').dirtyForms('setClean')`](#formmy-watched-formdirtyformssetclean) instead.
-
-
-#### `$.DirtyForms.disable()` (Deprecated)
-
-Please use `$('html').addClass($.DirtyForms.ignoreClass)` instead.
-
-## Triggers
-
-Simply bind a function to any of these hooks to respond to the corresponding trigger.
+An options object.
 
 ```javascript
-$(document).bind('choicecommit.dirtyforms', function() { 
-    // ...stuff to do before commiting the user's choice... 
+$('form').dirtyForms({ message: 'You better save first.', dirtyClass: 'sooooooo-dirty'});
+```
+
+> For a list of available options, see [Options](#options).
+
+
+#### `.dirtyForms( 'isDirty', excludeHelpers )`
+
+Returns `true` if any non-ignored elements that match or are descendants of the selector are dirty.
+
+##### `excludeHelpers` (Optional)
+
+Set to `true` to exclude helpers from the operation. The default is `false`.
+
+
+#### `.dirtyForms( 'setClean', excludeIgnored, excludeHelpers )`
+
+Marks all fields that match the selector (or are descendants of the selector) clean. Also calls the `setClean` method of all nested helpers. In other words, removes the `dirtyClass` and resets the state so any changes from the current point will cause the form to be dirty. If the operation marks all elements within a form clean, it will also mark the form clean even if it is not included in the selector.
+
+##### `excludeIgnored` (Optional)
+
+Set to `true` to exclude ignored fields from the operation. The default is `false`.
+
+##### `excludeHelpers` (Optional)
+
+Set to `true` to exclude helpers from the operation. The default is `false`.
+
+
+#### `.dirtyForms( 'rescan', excludeIgnored, excludeHelpers )`
+
+Scans all fields that match the selector (or are descendants of the selector) and stores their original values of any dynamically added fields. Also calls the `rescan` method of all nested helpers. Ignores any original values that had been set previously during prior scans or the `.dirtyForms('setClean')` method. Also synchronizes the dirty state of fields with any changes to the ignore status, which can be helpful if you are styling elements differently if they have the dirty class.
+
+##### `excludeIgnored` (Optional)
+
+Set to `true` to exclude ignored fields from the operation. The default is `false`.
+
+##### `excludeHelpers` (Optional)
+
+Set to `true` to exclude helpers from the operation. The default is `false`.
+
+
+## Events
+
+#### Form Events
+
+Simply bind a function to any of these hooks to respond to the corresponding event. The form that triggered the event can be accessed through the `event.target` property.
+
+```javascript
+$(document).bind('dirty.dirtyforms', function(event) { 
+	// Access the form that triggered the event
+    var $form = $(event.target);
+});
+
+// Or, bind to a specific form to listen for the event
+$('form#my-form').bind('dirty.dirtyforms', function () {
+	// Access the form that triggered the event
+    var $form = $(this);
 });
 ```
 
-**decidingcancelled.dirtyforms**: Raised when the *decidingCancel()* method is called before it runs any actions.
+| Name  | Parameters  |  Description  |  
+|---|---|---|
+| **dirty.dirtyforms**  | event  | Raised when a form changes from clean state to dirty state.  |
+| **clean.dirtyforms**  | event  | Raised when a form changes from dirty state to clean state. This may happen when the last element within the form is marked clean using `$('#element-id').dirtyForms('setClean')` or when the user undoes all of their edits.  |
+| **scan.dirtyforms**  | event  | Raised after the form is scanned for new fields (whether during initialization or when subsequently calling `.dirtyForms()`). |
+| **rescan.dirtyforms**  | event  | Raised after the form is rescanned for new fields (when calling `.dirtyForms('rescan')`).  |
+| **setclean.dirtyforms**  | event  | Raised after the `.dirtyForms('setClean')`) method is called or when the user clicks the `reset` button.  |
 
-**decidingcancelledAfter.dirtyforms**: Raised when the *decidingCancel()* method is called after it runs all actions.
 
-**decidingcontinued.dirtyforms**: Raised when the *decidingContinue()* method is called before it runs any actions.
 
-**choicecommit.dirtyforms**: Raised when the *choiceCommit* method is called before it runs any actions.
+#### Document Events
 
-**choicecommitAfter.dirtyforms**: Raised when the *choiceCommit* method is called after it runs all actions.
+Simply bind a function to any of these hooks to respond to the corresponding event.
 
-**defer.dirtyforms**: Raised prior to showing the dialog box to the user.
+```javascript
+$(document).bind('proceed.dirtyforms', function() { 
+    // ...stuff to do before proceeding to the link/button that was clicked... 
+});
+```
 
-**beforeRefire.dirtyforms**: Raised before the original event is refired after a user chooses to leave the page.
+| Name  | Parameters |  Description  |  
+|---|---|---|
+| **stay.dirtyforms**  | event  | Raised when the `choice.commit()` method is called with `choice.proceed` set to `false` before running any stay actions. In other words, called immediately when the user makes a stay choice.  |
+| **afterstay.dirtyforms**  | event  | Raised when the `choice.commit()` method is called with `choice.proceed` set to `false` after running any stay actions.  |
+| **proceed.dirtyforms**  | event, refireEvent  | Raised when the `choice.commit()` method is called with `choice.proceed` set to `true` before running any proceed actions. In other words, called immediately when the user makes a proceed choice. Passes the event that will be re-fired as the second parameter. Useful if you need to do things like save data back to fields which is normally part of event propagation - ala TinyMCE.  |
+| **defer.dirtyforms**  | event  | Raised prior to showing the dialog to the user (whether a custom dialog, or the browser's dialog). Useful for accessing elements on the page prior to showing the dialog. |
+| **beforeunload.dirtyforms**  | event | Non-cancelable event, raised prior leaving the page which may happen either as result of user selection if forms were dirty or due to a normal page exit of no changes were made.  |
+| **bind.dirtyforms**  | event  | Raised before event binding (the first time that `.dirtyForms()` is called), allowing customization of event handlers. Useful to interoperate with IFrames. See [Customizing Event Handlers](#customizing-event-handlers) for details.  |
 
-**beforeunload.dirtyforms**: Non-cancelable event, raised prior leaving the page which may happen either as result of user selection if forms were dirty, or due to a normal page exit of no changes were made.
-
------
-
-You can attach callbacks to the **decidingcancelled.dirtyforms** and **decidingcontinued.dirtyforms** custom events. These events are called when the cancel, or continue method on the modal dialog is called (when the user clicks either continue, or cancel).
-
-These triggers are not available when used with the browser fallback dialog method.
-
-Also available is **defer.dirtyforms** for accessing elements on the page prior to the dialog box alerting the user is called, and **beforeRefire.dirtyforms**, called before the original event is refired after a user chooses to leave the page (useful if you need to do things like save data back to fields which is normally part of event propagation - ala tinyMce).
 
 ## Selectors
 
-**:dirty** will select all elements with the dirty class attached. form:dirty would be all forms that are currently dirty for example.
-
-**:dirtylistening** will select all elements that has the listening class attached. This should be all forms that are currently listening for change.
+| Name  | Description  |  
+|---|---|
+| **:dirty**  | Selects all non-ignored elements with the dirty class attached. For example, `form:dirty` will select all non-ignored forms that are currently dirty. |
+| **:dirtylistening**  | Selects all elements that has the listening class attached. This will be all forms that are currently listening for changes (provided all of them had the class added by calling `.dirtyForms()`).  |
+| **:dirtyignored**  | Selects all elements that are currently ignored by Dirty Forms through the `ignoreSelector`, a helper's `ignoreSelector` or an element or a descendant of an element that has the `$.DirtyForms.ignoreClass` applied. Useful for checking whether an element is ignored (`$('.my-element').is(':dirtyignored')`).   |
 
 
 ## Helpers
 
-Dirty Forms was created because the similar plugins that existed were not flexible enough. To provide more flexibility a basic helper framework has been added. With this, you can add in new helper objects which will provide additional ability to check for whether a form is dirty or not.
+Dirty Forms was created because the similar plugins that existed were not flexible enough. To provide more flexibility a basic helper framework has been added. With this system you can add in new helper objects which will provide additional ability to check for whether a form is dirty or not.
 
-This is useful when you're using replacement inputs or textarea, such as with TinyMCE or CKEditor. See [Available Helpers](#available-helpers).
+This is useful for custom widgets or when you're using 3rd party frameworks such as with TinyMCE or CKEditor.
 
 #### Available Helpers
 
@@ -323,20 +411,22 @@ $.DirtyForms.helpers.push(myHelper);
 
 ##### Members
 
-#### `isDirty( form )` (Optional)
+#### `isDirty( $node, index )` (Optional)
 
-Should return the dirty status of the helper. You can use jQuery to select all of the helpers within the form and test their dirty status.
+Should return the dirty status of the helper. You can use jQuery to select all of the helpers within the node and test their dirty status.
 
 ```javascript
-isDirty: function (form) {
+isDirty: function ($node) {
 	var isDirty = false;
 	
-	// Search for all tinymce elements inside the given form
-	$(form).find(':tinymce').each(function () {
+	// Search for all tinymce elements (either the current node or any nested elements).
+	$node.filter(':tinymce').add($node.find(':tinymce')).each(function () {
 
 		if ($(this).tinymce().isDirty()) {
 			isDirty = true;
-			return true;
+
+			// Return false to exit out of the each function
+			return false;
 		}
 		
 	});
@@ -345,16 +435,25 @@ isDirty: function (form) {
 }
 ```
 
+##### `$node`
 
-#### `setClean( form )` (Optional)
+A jQuery object representing one of the elements of the `.dirtyForms('isDirty')` method selector.
 
-Should reset the dirty status of the helper so `isDirty(form)` will return false the next time it is called.
+##### `index`
+
+The index number (integer) of the current `$node` within the `.dirtyForms('isDirty')` method selector.
+
+
+
+#### `setClean( $node, index, excludeIgnored )` (Optional)
+
+Should reset the dirty status of the helper so `isDirty(form)` will return `false` the next time it is called.
 
 ```javascript
-setClean: function (form) {
+setClean: function ($node) {
 
-	// Search for all tinymce elements inside the given form
-	$(form).find(':tinymce').each(function () {
+	// Search for all tinymce elements (either the current node or any nested elements).
+	$node.filter(':tinymce').add($node.find(':tinymce')).each(function () {
 		if ($(this).tinymce().isDirty()) {
 			//Force not dirty state
 			$(this).tinymce().isNotDirty = 1; 
@@ -364,13 +463,45 @@ setClean: function (form) {
 }
 ```
 
-#### `ignoreAnchorSelector` (Optional Property)
+##### `$node`
 
-A jQuery selector of any anchor elements to exclude from activating the dialog. Non-anchors will be ignored. This works similarly to putting the ignoreClass on a specific anchor, but will always ignore the anchors if your helper is included.
+A jQuery object representing one of the elements of the `.dirtyForms('isDirty')` method selector.
+
+##### `index`
+
+The index number (integer) of the current `$node` within the `.dirtyForms('isDirty')` method selector.
+
+##### `excludeIgnored`
+
+A boolean value indicating whether to include or exclude ignored elements. Note that you can test whether it is ignored using the `:dirtyignored` selector.
+
+
+#### `rescan( $node, index, excludeIgnored )` (Optional)
+
+If the helper requires extra logic in order to track the original state, this method can be used to track the values of any elements that were dynamically added since the last scan or rescan.
+
+##### `$node`
+
+A jQuery object representing one of the elements of the `.dirtyForms('isDirty')` method selector.
+
+##### `index`
+
+The index number (integer) of the current `$node` within the `.dirtyForms('isDirty')` method selector.
+
+##### `excludeIgnored`
+
+A boolean value indicating whether to include or exclude ignored elements. Note that you can test whether it is ignored using the `:dirtyignored` selector.
+
+
+#### `ignoreSelector` (Optional Property)
+
+A jQuery selector of any anchor, input, select, or textarea elements to exclude from interacting with Dirty Forms. This works similarly to putting the `ignoreClass` on a specific element, but can be included with a specific helper.
 
 ```javascript
-ignoreAnchorSelector: '.mceEditor a,.mceMenu a'
+ignoreSelector: '.mceEditor a,.mceMenu a'
 ```
+
+### Helper Example
 
 To respect the way jQuery selectors work, all children of the form as well as the form itself should have your custom `isDirty()` and `setClean()` logic applied.
 
@@ -378,15 +509,16 @@ To respect the way jQuery selectors work, all children of the form as well as th
 ```javascript
 // Example helper, the form is always considered dirty
 (function($){
+
 	// Create a new object, with an isDirty method
 	var alwaysDirty = {
-		// Ignored anchors will not activate the dialog
-		ignoreAnchorSelector : '.editor a, a.toolbar',
-		isDirty : function(node){
+		// Ignored elements will not activate the dialog
+		ignoreSelector : '.editor a, a.toolbar',
+		isDirty : function($node){
 			// Perform dirty check on a given node (usually a form element)
 			return true;
 		},
-		setClean : function(node){
+		setClean : function($node){
 			// Perform logic to reset the node so the isDirty function will return true
 			// the next time it is called for this node.
 
@@ -397,253 +529,639 @@ To respect the way jQuery selectors work, all children of the form as well as th
 		// accomplished easily by using the .find() jQuery
 		// method.
 		//
-		// $(node).find('.mySelector').each(function(){
+		// $node.find('.mySelector').each(function(){
 		//     Run desired action against the child
 		//     node here
 		//     doSomething(this);
 		// });
 		// Run desired action against $(node) to handle the case
 		// of a selector for a specific DOM element
-		// if ($(node).hasClass('.mySelector')) { doSomething(node); }
+		// if ($node.hasClass('.mySelector')) { doSomething(node); }
 
 	}
 	// Push the new object onto the helpers array
 	$.DirtyForms.helpers.push(alwaysDirty);
+
 })(jQuery);
 ```
 
 See the [TinyMCE Helper Source Code](https://github.com/snikch/jquery.dirtyforms/blob/master/jquery.dirtyforms/helpers/tinymce.js) for another complete example.
 
+
+
 ## Dialogs
 
-The default facebox dialog can be overriden by setting a new dialog object, and providing implementations for the following members.
+The default browser dialog can be overridden by setting a new dialog object or integrating one of the pre-built dialog modules. 
 
-#### `fire(message, title)` (Required)
+> NOTE: This works when the user attempts to leave the page by clicking hyperlinks within the page only. If the user interacts with the browser directly, the browser's dialog will be called instead since browsers don't provide a way to override this behavior.
+
+
+#### Available Dialog Modules
+
+- [BlockUI](https://github.com/NightOwl888/jquery.dirtyforms.dialogs.blockui.dist#readme)
+- [Bootstrap Modal](https://github.com/NightOwl888/jquery.dirtyforms.dialogs.bootstrap.dist#readme)
+- [Facebox](https://github.com/NightOwl888/jquery.dirtyforms.dialogs.facebox.dist#readme)
+- [jQuery UI](https://github.com/NightOwl888/jquery.dirtyforms.dialogs.jquery-ui.dist#readme)
+- [PNotify](https://github.com/NightOwl888/jquery.dirtyforms.dialogs.pnotify.dist#readme)
+
+#### Custom Dialog Integration
+
+You can create your own dialog integration by implementing the following members.
+
+#### `open( choice, message, ignoreClass )` (Required)
 
 Opens the dialog.
 
-##### message
+##### `choice`
 
-The main message to show in the dialog.
+An object that can be used to interact with Dirty Forms. It contains the following members.
 
-##### title
+| Name  | Type  | Default  | Description  |  
+|---|---|---|---|
+| **staySelector**  | string  | `''`  | A jQuery selector. The matching elements will have their click event bound to the stay choice (when the user decides to stay on the current page).   |   
+| **proceedSelector**  | string  | `''`  | A jQuery selector. The matching elements will have their click event bound to the proceed choice (when the user decides to leave the current page). Generally, this should be a single element on the dialog to prevent the user from losing their form edits too easily.  |  
+| **bindEscKey**  | bool  | `true`  | If `true`, the keydown event will be bound and if the escape key is pressed when the dialog is open, it will trigger the stay choice.  |  
+| **bindEnterKey**  | bool  | `false` | If `true`, the keydown event will be bound and if the enter key is pressed when the dialog is open, it will trigger the stay choice.  |  
+| **proceed**  | bool  | `false` | A flag that when set `false` will trigger a stay choice when the `commit()` method is called and will trigger a proceed choice when set `true` and the `commit()` method is called. |  
+| **commit(event)**  | function  | N/A | An event handler that commits the choice that is stored in the `proceed` property. |  
 
-The title for the header of the dialog.
+##### `message`
+
+The main message to show in the body of the dialog.
+
+##### `ignoreClass`
+
+A handy reference to the `$.DirtyForms.ignoreClass` that can be used to make Dirty Forms ignore elements (such as anchors) of the dialog.
 
 
-#### `bind()` (Optional)
+#### `close( proceeding, unstashing )` (Optional)
 
-Binds the continue and cancel functions to the correct links. For some dialog frameworks, it is simpler just to do all of the work in the fire function. In that case, this function can be omitted. Note that this function is called immediately after fire is called.
+Closes the dialog. This method is called after the choice is committed. 
 
-It is important to trap the `ESC` key (character code 27) in the keydown event in order to ensure it doesn't cause erratic behavior.
+##### `proceeding`
 
-```javascript
-// Trap the escape key and force a close. 
-// Cancel it so the dialog framework doesn't intercept it.
-$(document).keydown(function(e) {
+`true` if this is the proceed choice, `false` if this is the stay choice.
 
-	// Look for the ESC key
-	if (e.which == 27) {
-	
-		// Cancel the event so it doesn't bubble
-		e.preventDefault();
-		
-		// Close the dialog
-		dlg.dialog('close');
-		
-		// Cancel the decision
-		$.DirtyForms.decidingCancel(e);
-		
-		// Return false
-		return false;
-	}
-	
-	// Make sure you don't return false here
-});
-```
+##### `unstashing`
+
+`true` if the `unstash()` method will be called after this method. This can help to prevent issues from dialogs that respond to their corresponding close command too late and it closes the stash dialog instead of the Dirty Forms confirmation dialog.
+
 
 
 #### `stash()` (Optional)
 
-Stash returns the current contents of a dialog to be refired after the confirmation. Use to store the current dialog (from the application), when it's about to be replaced with the confirmation dialog. This function can be omitted (or return false) if you don't wish to stash anything.
+Stash returns the current contents of a dialog to be unstashed after a dialog choice of stay. All JavaScript datatypes are supported, including object and jQuery objects, and will be passed back as the `stash` parameter of the `unstash()` method. Use to store the current dialog content (from the application), when it's about to be replaced with the Dirty Forms confirmation dialog. This function can be omitted or return `false` if you don't wish to stash anything.
 
 > See the [Modal Dialog Stashing](#modal-dialog-stashing) section for more information.
 
 
-#### `refire(content, event)` (Optional)
+#### `unstash( stash, event )` (Optional)
 
-Refire handles closing an existing dialog AND fires a new one. You can omit this method (or return false) if you don't need to use stashing/refiring.
+Unstash handles restoring the content of the dialog. You can omit this method (or return `false`) if you don't need to use stashing.
 
-##### content
+##### `stash`
 
-A string containing the HTML of the object that was placed in the stash.
+The value that was returned from the `stash()` method (unless it was `false`, then `unstash()` won't be called).
 
-##### event
+##### `event`
 
-The event that triggered the refire (typically a button or anchor click).
-
-> See the [Modal Dialog Stashing](#modal-dialog-stashing) section for more information.
-
-
-#### `selector` (Optional Property)
-
-A jQuery selector used to select the element that will be cloned and put into the stash. This should be a class or id of a modal dialog with a form in it, not the dialog that Dirty Forms will show its confirmation message in. This property can be omitted if you are not using stashing.
+The event that triggered the unstash (typically a button or anchor click).
 
 > See the [Modal Dialog Stashing](#modal-dialog-stashing) section for more information.
 
 
-#### `continueButtonText` (Optional Property)
+#### `stashSelector` (Optional Property)
 
-Although this property is not used by Dirty Forms, you can define it to make it possible for the end user of the dialog module to set the text of the continue button.
+A jQuery selector used to select the element whose child form will be cloned and put into the stash. This should be a class or id of a modal dialog with a form in it, not the dialog that Dirty Forms will show its confirmation message in. The purpose of stashing the form separately is to re-attach it to the DOM and refire events on if the user decides to proceed. This property can be omitted if you are not using stashing, but is required if you are using stashing.
+
+> See the [Modal Dialog Stashing](#modal-dialog-stashing) section for more information.
+
+
+#### `title` (Optional Property)
+
+Although this property is not used by Dirty Forms, you can define it to make it possible for the end user of the dialog module to set the text of the dialog title.
+
+If contributing a new dialog module, please include this property and set the default value to `Are you sure you want to do that?`.
+
+
+#### `proceedButtonText` (Optional Property)
+
+Although this property is not used by Dirty Forms, you can define it to make it possible for the end user of the dialog module to set the text of the proceed button.
 
 If contributing a new dialog module, please include this property and set the default value to `Leave This Page`.
 
 
-#### `cancelButtonText` (Optional Property)
+#### `stayButtonText` (Optional Property)
 
-Although this property is not used by Dirty Forms, you can define it to make it possible for the end user of the dialog module to set the text of the cancel button.
+Although this property is not used by Dirty Forms, you can define it to make it possible for the end user of the dialog module to set the text of the stay button.
 
 If contributing a new dialog module, please include this property and set the default value to `Stay Here`.
+
+
+#### `preMessageText` (Optional Property)
+
+Although this property is not used by Dirty Forms, you can define it to make it possible for the end user of the dialog module to prepend text or HTML to the dialog message.
+
+If contributing a new dialog module, consider adding this property if suitable for the dialog framework.
+
+
+#### `postMessageText` (Optional Property)
+
+Although this property is not used by Dirty Forms, you can define it to make it possible for the end user of the dialog module to append text or HTML to the dialog message.
+
+If contributing a new dialog module, consider adding this property if suitable for the dialog framework.
 
 
 #### `width` (Optional Property)
 
 Although this property is not used by Dirty Forms, you can define it to make it possible for the end user of the dialog module to set the width of the dialog (if the dialog framework supports setting the width through JavaScript).
 
+If contributing a new dialog module, consider adding this property if suitable for the dialog framework.
+
 
 #### `class` (Optional Property)
 
-Although this property is not used by Dirty Forms, you can define it to make it possible for the end user of the dialog module to set the class of the outermost element of the dialog. This can make it easy for the end user to style the dialog with CSS. Omit this setting if the dialog framework is using themes, since it doesn't make sense to override styles of an existing theme.
+Although this property is not used by Dirty Forms, you can define it to make it possible for the end user of the dialog module to set the class of the outermost element of the dialog. This can make it easy for the end user to style the dialog with CSS. Omit this setting if the dialog framework is using themes, since it typically doesn't make sense to override styles of an existing theme.
 
-#### Dialog Example
+If contributing a new dialog module, consider adding this property if suitable for the dialog framework.
+
+
+### Dialog Examples
+
+#### BlockUI Dialog Example
+
+Here is an example dialog setup using the [BlockUI jQuery plugin](http://malsup.com/jquery/block/).
 
 ```javascript
-// Selector is a selector string for dialog content. 
-// Used to select the element that will be cloned and put into the stash.
-selector : '#facebox .content',
+$(function() {
 
-// Fire starts the dialog
-fire : function(message, title){
-	var content = '<h1>' + title + '</h1><p>' + message + '</p>' + 
-		'<p>' +
-			'<a href="#" class="' + $.DirtyForms.ignoreClass + ' continue">Continue</a>' +
-			'<a href="#" class="' + $.DirtyForms.ignoreClass + ' cancel">Stop</a>' +
-		'</p>';
-	$.facebox(content);
-},
+	$('form').dirtyForms({
+		dialog: {
+			open: function (choice, message) {
+				$.blockUI({
+					message: '<span class="dirty-dialog">' +
+							'<h3>Are you sure you want to do that?</h3>' +
+							'<p>' + message + '</p>' +
+							'<span>' +
+								'<button type="button" class="dirty-proceed">Leave This Page</button> ' +
+								'<button type="button" class="dirty-stay">Stay Here</button>' +
+							'</span>' +
+						'</span>',
+					css: {
+						width: '400px',
+						padding: '10px',
+						cursor: 'auto'
+					},
+					overlayCSS: {
+						cursor: 'auto'
+					}
+				});
 
-// Bind binds the continue and cancel functions to the correct links. For some dialog
-// frameworks, it is simpler just to do all of the work in the fire function.
-// In that case, this function can be omitted. Note that this function is called immediately
-// after fire is called.
-bind : function(){
-	$(document).bind('keydown.facebox', function (e) {
-		// Intercept the escape key and send the event to Dirty Forms
-		if (e.which === 27) {
-			$(document).trigger('close.facebox');
-            $.DirtyForms.decidingCancel(e);
+				// Bind Events
+
+				// By default, BlockUI binds the Enter key to the first button, 
+				// which would be the proceed button in our case. So, we need
+				// to take control and bind it to the stay action instead to 
+				// prevent it from being a dangerous key.
+				choice.bindEnterKey = true;
+
+				// Bind both buttons to the appropriate actions.
+				// Also bind the overlay so if the user clicks outside the dialog, 
+				// it closes and stays on the page (optional).
+				choice.staySelector = '.dirty-dialog .dirty-stay,.blockOverlay';
+				choice.proceedSelector = '.dirty-dialog .dirty-proceed';
+			},
+			close: function () {
+				$.unblockUI();
+			}
 		}
 	});
-	$('#facebox .cancel, #facebox .close').click($.DirtyForms.decidingCancel);
-	$('#facebox .continue').click($.DirtyForms.decidingContinue);
-	$(document).bind('decidingcancelled.dirtyforms', function(){
-		$(document).trigger('close.facebox');
-	});
-},
-
-// Stash returns the current contents of a dialog to be refired after the confirmation
-// Use to store the current dialog, when it's about to be replaced with the confirmation dialog.
-// This function can be omitted (or return false) if you don't wish to stash anything.
-stash : function(){
-	var fb = $('#facebox .content');
-	return ($.trim(fb.html()) == '' || fb.css('display') != 'block') ?
-	   false :
-	   fb.clone(true);
-}
-
-// Refire handles closing an existing dialog AND fires a new one.
-// You can omit this method (or return false) if you don't need to use stashing/refiring.
-refire : function(content){
-	var rebox = function(){
-		$.facebox(content);
-		$(document).unbind('afterClose.facebox', rebox);
-	}
-	$(document).bind('afterClose.facebox', rebox);
-},
-
+	
+});
 ```
 
-`fire()` accepts a `message` and `title`, and is responsible for creating the modal dialog. Note the two classes on each link. In the `bind()` method you will see that we bind the `$.DirtyForms.decidingCancel(e)` method to the `.cancel` link and the `.close` link, and we bind `$.DirtyForms.decidingContinue(e)` to the `.continue` link. You should bind both `$.DirtyForms.decidingCancel` and `$.DirtyForms.decidingContinue` in the `bind()` method (or alternatively you can create the entire dialog in the `fire()` method).
+> Note that you can also specify the dialog using the syntax `$.DirtyForms.dialog = { /* the dialog members */ };`. This way they can be packaged as separate reusable modules.
 
-> Be sure to register the keydown event for the escape key and pass the call on to `$.DirtyForms.decidingCancel(e)` or the default browser fallback will fail when the user hits the escape key.
+#### jQuery UI Dialog Example
 
-Alternatively, another pattern is supported for modal dialogs where the continuing execution of the event is not allowed until after the dialog is closed (such as when using jQuery UI dialog in modal mode). The pattern uses a boolean property named `$.DirtyForms.choiceContinue` to indicate the dialog choice and a method named `$.DirtyForms.choiceCommit(e)` to execute the choice. Here is an example of that pattern in action using a modal jQuery UI dialog:
-
-```javascript
-$.DirtyForms.dialog = {
-	selector: '#unsavedChanges',
-	fire: function(message, dlgTitle) {
-		$('#unsavedChanges').dialog({title: dlgTitle, width: 400, modal: true});
-		$('#unsavedChanges').html(message);
-	},
-	bind: function() {
-		$('#unsavedChanges').dialog('option', 'buttons',
-			[
-				{
-					text: "Leave This Page",
-					click: function(e) {
-						$.DirtyForms.choiceContinue = true;
-						$(this).dialog('close');
-					}
-				},
-				{
-					text: "Stay Here",
-					click: function(e) {
-						$.DirtyForms.choiceContinue = false;
-						$(this).dialog('close');
-					}
-				}
-			] 
-		).bind('dialogclose', function(e) {
-			// Execute the choice after the modal dialog closes
-			$.DirtyForms.choiceCommit(e);
-		});
-
-		// Intercept the escape key and cancel the event.
-		// Calling dialog('close') will fire the 'dialogclose' event,
-		// which will in turn commit the choice to Dirty Forms.
-		$(document).bind('keydown', function(e) {
-			if (e.which == 27) {
-				e.preventDefault();
-				$.DirtyForms.choiceContinue = false;
-                $('#unsavedChanges').dialog('close');
-            }
-        });
-	}
-}
-
-// Dynamically add the div element to the page for the dialog (a hidden div).
-$('body').append("<div id='unsavedChanges' style='display: none'></div>");
-        
-```
-
-Note that calling `$.DirtyForms.choiceContinue = false;` isn't strictly necessary as `false` is the default, but is shown in the example to make it more clear. Also note that a choice will always be committed using this method whether the user clicks a button or uses the "X" icon to close the dialog because the `'dialogclose'` event is called in every case the dialog is closed.
-
-The `$.DirtyForms.choiceCommit()` method automatically calls either `$.DirtyForms.decidingCancel()` or `$.DirtyForms.decidingContinue()` depending on the state of `$.DirtyForms.choiceContinue`, so there is no need to call them manually.
-
-If you don't want to use a dialog at all, simply pass in `false` instead of an object. Dirty Forms will then use the default browser dialog.
+Here is a more advanced example using [jQuery UI Dialog](https://jqueryui.com/dialog/). The jQuery UI [`close` event](http://api.jqueryui.com/dialog/#event-close) is used along with a combination of the `choice.proceed` property and `choice.commit()` method to ensure every time the dialog is closed a choice is made. In addition, we are setting the dialog on the public `$.DirtyForms.dialog` property, making this into a separate dialog module that will automatically override the default browser dialog without specifying the dialog when calling `.dirtyForms()`.
 
 ```javascript
-$.DirtyForms.dialog = false;
+$(function() {
+
+	// jQuery UI requires that the HTML be in the DOM
+	// already before it is called. So we add it during
+	// page load.
+    $('body').append('<div id="dirty-dialog" style="display:none;" />');
+
+	$.DirtyForms.dialog = {
+		// Custom properties to allow overriding later using 
+		// the syntax $.DirtyForms.dialog.title = 'custom title';
+		
+        title: 'Are you sure you want to do that?',
+        proceedButtonText: 'Leave This Page',
+        stayButtonText: 'Stay Here',
+        preMessageText: '<span class="ui-icon ui-icon-alert" style="float:left; margin:2px 7px 25px 0;"></span>',
+        postMessageText: '',
+        width: 430,
+		
+        // Dirty Forms Methods
+        open: function (choice, message) {
+            $('#dirty-dialog').dialog({
+                open: function () {
+                    // Set the focus on close button. This takes care of the 
+					// default action by the Enter key, ensuring a stay choice
+					// is made by default.
+                    $(this).parents('.ui-dialog')
+						   .find('.ui-dialog-buttonpane button:eq(1)')
+						   .focus();
+                },
+				
+				// Whenever the dialog closes, we commit the choice
+                close: choice.commit,
+                title: this.title,
+                width: this.width,
+                modal: true,
+                buttons: [
+                    {
+                        text: this.proceedButtonText,
+                        click: function () {
+							// Indicate the choice is the proceed action
+                            choice.proceed = true;
+                            $(this).dialog('close');
+                        }
+                    },
+                    {
+                        text: this.stayButtonText,
+                        click: function () {
+							// We don't need to take any action here because
+							// this will fire the close event handler and
+							// commit the choice (stay) for us automatically.
+                            $(this).dialog('close');
+                        }
+                    }
+                ]
+            });
+			
+			// Inject the content of the dialog using jQuery .html() method.
+            $('#dirty-dialog').html(this.preMessageText + message + this.postMessageText);
+        },
+        close: function () {
+			// This is called by Dirty Forms when the 
+			// Escape key is pressed, so we will close
+			// the dialog manually. This overrides the default
+			// Escape key behavior of jQuery UI, which would
+			// ordinarily not fire the close: event handler 
+			// declared above.
+            $('#dirty-dialog').dialog('close');
+        }
+	};
+	
+});
 ```
 
 ### Modal Dialog Stashing
 
-Stashing is meant for the following scenario.
+Dialog stashing is meant for the following scenario.
 
-1. A form is hosted inside a modal dialog.
-2. The dialog framework you use doesn't allow overlaying a modal dialog on top of another modal dialog.
+1. The dialog framework doesn't allow overlaying a modal dialog on top of another modal dialog.
+2. A form is hosted inside a modal dialog.
+3. The modal dialog with the form has an anchor tag that navigates off of the page.
 
-You don't need to use stashing if either of the above (or both) of the items don't apply to you.
+You don't need to use stashing if any of the above items are false.
 
 If you have a form and link which is in a modal dialog (a modal dialog created by some other part of your application) then when the Dirty Forms modal fires, the original modal is removed. So the stash saves the content from the original modal dialog while Dirty Forms shows its modal dialog, and then re-shows the original modal dialog with the edits if the user chooses to stay on the page.
+
+> **TIP:** If you stash a jQuery object, it will contain the state of the DOM including edits to fields.
+
+#### Dialog Stashing Example
+
+Here is an example of dialog stashing using Facebox.
+
+```javascript
+$(function() {
+
+    $.DirtyForms.dialog = {
+        // Custom properties and methods to allow overriding (may differ per dialog)
+        title: 'Are you sure you want to do that?',
+        proceedButtonClass: 'button medium red',
+        proceedButtonText: 'Leave This Page',
+        stayButtonClass: 'button medium',
+        stayButtonText: 'Stay Here',
+
+        // Typical Dirty Forms Properties and Methods
+
+        
+        open: function (choice, message, ignoreClass) {
+		
+            var content =
+                '<h1>' + this.title + '</h1>' +
+                '<p>' + message + '</p>' +
+                '<p>' +
+                    '<a href="#" class="dirty-proceed ' + ignoreClass + ' ' + this.proceedButtonClass + '">' + this.proceedButtonText + '</a>' +
+                    '<a href="#" class="dirty-stay ' + ignoreClass + ' ' + this.stayButtonClass + '">' + this.stayButtonText + '</a>' +
+                '</p>';
+            $.facebox(content);
+
+            // Bind Events
+            choice.bindEnterKey = true;
+            choice.staySelector = '#facebox .dirty-stay, #facebox .close, #facebox_overlay';
+            choice.proceedSelector = '#facebox .dirty-proceed';
+        },
+		
+		// Dialog Stashing Support
+		
+        close: function (proceeding, unstashing) {
+			// Due to a bug in Facebox that causes it to
+			// close the stashed dialog when it reappears, 
+			// we skip the call to 'close.facebox' when
+			// the next method call will be unstash().
+            if (!unstashing) {
+                $(document).trigger('close.facebox');
+            }
+        },
+		
+		// Selector for stashing the content of another dialog.
+		// This should be the dialog that contains the form you want
+		// to stash, not the Dirty Forms confirmation dialog.
+        stashSelector: '#facebox .content',
+		
+		// Save the dialog content to the stash.
+        stash: function () {
+            var fb = $('#facebox');
+
+			// Before returning the object that will be stashed, 
+			// we check to see if there is any HTML and
+			// whether the dialog is visible. We just get the
+			// elements we need to save and then do a deep clone,
+			// which will save the user's edits.
+            return ($.trim(fb.html()) === '' || fb.css('display') != 'block') ?
+               false :
+               $('#facebox .content').children().clone(true);
+        },
+		
+		// On the return trip (after the user takes the 
+		// stay choice in the confirmation dialog), 
+		// the jQuery object representing 
+		// $('#facebox .content').children() is returned, so 
+		// we just need to add it back to the dialog again.
+		// This process may vary depending on the dialog framework.
+        unstash: function (stash, ev) {
+            $.facebox(stash);
+        }
+	};
+	
+});
+```
+
+## Event Handler Customization
+
+If you need Dirty Forms to work with either parent or child IFrames, you can attach custom events and override the default event handling code. This is useful if you want to monitor events of an IFrame or change the target frame that is redirected instead of using the default behavior.
+
+You just need to hook the `bind.dirtyforms` event prior to the first call to `.dirtyForms()`. An `events` object is passed as the second parameter and it contains the following methods.
+
+### Event Object Methods
+
+#### `bind( window, document, data )`
+
+Binds all of the events for Dirty Forms.
+
+##### `window`
+
+The DOM window to use to bind the events to. The default uses the DOM window object from the Dirty Forms context.
+
+##### `document`
+
+The DOM document to use to bind the events to. The default uses the DOM document object from the Dirty Forms context.
+
+##### `data`
+
+The event data to be passed along to each of the event handlers. The default is an empty object (`{}`);
+
+
+#### `bindForm( $form, data )`
+
+Binds the events to a form and sets the listening class so the :dirtylistening selector will include it.
+
+##### `$form`
+
+A jQuery object containing a form or multiple forms to bind. This method is called once for each form specified in the selector used when calling `.dirtyForms()`.
+
+##### `data`
+
+The event data to be passed along to each of the event handlers. The default is an empty object (`{}`);
+
+
+#### `onFocus( event )`
+
+The event handler for the `focus` and `keydown` events of each field that matches the `fieldSelector`.
+
+##### `event`
+
+A jQuery event object containing context from the element that caused the event.
+
+
+#### `onFieldChange( event )`
+
+The event handler for the `change`, `input`, `propertychange`, and `keydown` events of each field that matches the `fieldSelector`.
+
+##### `event`
+
+A jQuery event object containing context from the element that caused the event.
+
+
+#### `onReset( event )`
+
+The event handler for the `reset` event of each form.
+
+##### `event`
+
+A jQuery event object containing context from the element that caused the event.
+
+
+#### `onAnchorClick( event )`
+
+The event handler for the `click` event of each anchor that has a valid `href` and is not `target="_blank"`.
+
+##### `event`
+
+A jQuery event object containing context from the element that caused the event.
+
+
+#### `onSubmit( event )`
+
+The event handler for the `submit` event of each form.
+
+##### `event`
+
+A jQuery event object containing context from the element that caused the event.
+
+
+#### `onBeforeUnload( event )`
+
+The event handler for the `beforeunload` event of the `window` object.
+
+##### `event`
+
+A jQuery event object containing context from the element that caused the event.
+
+
+#### `onRefireClick( event )`
+
+Called after the user decides to proceed after the dialog is shown (not including the browser dialog).
+
+##### `event`
+
+A jQuery event object containing context from the element that caused the event.
+
+
+#### `onRefireAnchorClick( event )`
+
+Called by `onRefireClick()` after attempting to execute the event. If the execution didn't cause the page to redirect or reload, we end up here and the assumption is that the user clicked an anchor.
+
+##### `event`
+
+A jQuery event object containing context from the element that caused the event.
+
+
+#### `clearUnload()`
+
+Detaches the `beforeunload` event from the `window` object. This is done when making a proceed choice from the dialog.
+
+
+### Example Usage
+
+> IMPORTANT: The handler for `bind.dirtyforms` must be declared before `.dirtyForms()` is called.
+
+```javascript
+$(function() {
+
+	// Add functionality to an event handler
+	$(document).bind('bind.dirtyforms', function (ev, events) {
+		var showAlert = function(when) {
+			alert('hello world ' + when);
+		};
+
+		var originalBind = events.bind;
+
+		events.bind = function (ev) {
+			showAlert('before');
+			originalBind(ev);
+			showAlert('after');
+		};
+	});
+
+
+	// Bind additional events to existing handlers
+	$(document).bind('bind.dirtyforms', function (ev, events) {
+		var originalBind = events.bind;
+
+		events.bind = function (window, document, data) {
+			originalBind(window, document, data);
+			$('button.mybutton').bind('click', events.onAnchorClick);
+		};
+	});
+
+
+	// Pass data between handlers via events
+	$(document).bind('bind.dirtyforms', function (ev, events) {
+		var originalOnAnchorClick = events.onAnchorClick;
+		var originalOnRefireAnchorClick = events.onRefireAnchorClick;
+
+		events.onAnchorClick = function (ev) {
+			ev.data.hello = 'Hello there!';
+			originalOnAnchorClick(ev);
+		};
+		events.onRefireAnchorClick = function (ev) {
+			// Shows "Hello there!"
+			alert(ev.data.hello);
+			originalOnRefireAnchorClick(ev);
+		};
+	});
+
+
+	// Watch the top (parent) document for clicks when hosted within an IFrame
+	$(document).bind('bind.dirtyforms', function (ev, events) {
+		events.bind(window.top, window.top.document);
+	});
+
+
+	// Watch the top document for clicks when hosted within an IFrame and
+	// change the target window depending on whether the user clicked an anchor 
+	// on the top page. If the anchor within an IFrame is non-local, redirect
+	// the top browser window instead of within the IFrame.
+	$(document).bind('bind.dirtyforms', function (ev, events) {
+		events.bind(window.top, window.top.document, { isTopDocument: true });
+
+		events.onRefireAnchorClick = function (ev) {
+			var $a = $(ev.target).closest('[href]'),
+				href = $a.attr('href'),
+				isLocal = $a[0].host === window.location.host;
+
+			if (ev.data.isTopDocument || !isLocal) {
+				// For IFrame and non-local, redirect top document
+				$.DirtyForms.dirtylog('Sending top location to ' + href);
+				window.top.location.href = href;
+			} else {
+				$.DirtyForms.dirtylog('Sending location to ' + href);
+				window.location.href = href;
+			}
+		};
+	});
+
+
+	// Advanced usage - watch the top document, keep track of its dirty
+	// state, and block the exit of changes to the top document using a helper.
+	$(document).bind('bind.dirtyforms', function (ev, events) {
+		events.bind(window.top, window.top.document, { isTopDocument: true });
+
+		// Locate all of the forms in the top document and bind them 
+		// to listen for events that change the dirty status.
+		var $forms = $(window.top.document).find('form');
+		events.bindForm($forms, {});
+
+		events.onRefireAnchorClick = function (ev) {
+			var $a = $(ev.target).closest('[href]'),
+				href = $a.attr('href'),
+				isLocal = $a[0].host === window.location.host;
+
+			if (ev.data.isTopDocument || !isLocal) {
+				// For IFrame and non-local, redirect top document
+				$.DirtyForms.dirtylog('Sending top location to ' + href);
+				window.top.location.href = href;
+			} else {
+				$.DirtyForms.dirtylog('Sending location to ' + href);
+				window.location.href = href;
+			}
+		};
+	});
+
+	// Continued: A helper to report the dirty status from the top document, 
+	// and to allow setClean and rescan methods to affect the top document. 
+	// We pass in true to the excludeHelpers parameter so we don't get 
+	// a recursive loop.
+	var topDocumentHelper = {
+		isNotTopDocument: window.top !== window.self,
+		isDirty: function ($node, index) {
+			// Prevent from calling when the window is not in
+			// an IFrame and there is no need to execute for every node.
+			if (this.isNotTopDocument && index === 0) {
+				return $(window.top.document).dirtyForms('isDirty', true);
+			}
+			return false;
+		},
+		setClean: function ($node, index, excludeIgnored) {
+			if (this.isNotTopDocument && index === 0) {
+				$(window.top.document).dirtyForms('setClean', excludeIgnored, true);
+			}
+		},
+		rescan: function ($node, index, excludeIgnored) {
+			if (this.isNotTopDocument && index === 0) {
+				$(window.top.document).dirtyForms('rescan', excludeIgnored, true);
+			}
+		}
+	};
+	$.DirtyForms.helpers.push(topDocumentHelper);
+
+});
+```
