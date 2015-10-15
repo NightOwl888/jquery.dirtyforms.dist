@@ -50,12 +50,12 @@ There are several different ways to get the code. Some examples below:
 #### CDN
 Dirty Forms is available over jsDelivr CDN and can directly included to every page.
 ```HTML
-<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/2.0.0-beta00005/jquery.dirtyforms.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/2.0.0-beta00006/jquery.dirtyforms.min.js"></script>
 ```
 
 jsDelivr also supports [on-the-fly concatenation of files](https://github.com/jsdelivr/jsdelivr#load-multiple-files-with-single-http-request), so you can reference only 1 URL to get jQuery and jquery.dirtyforms in one request.
 ```HTML
-<script type="text/javascript" src="//cdn.jsdelivr.net/g/jquery@1.11.3,jquery.dirtyforms@2.0.0-beta00005"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/g/jquery@1.11.3,jquery.dirtyforms@2.0.0-beta00006"></script>
 ```
 
 #### Self-Hosted
@@ -92,7 +92,7 @@ A [SourceMap](https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-
 #### CDN
 
 ```HTML
-<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/2.0.0-beta00005/jquery.dirtyforms.min.js.map"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/jquery.dirtyforms/2.0.0-beta00006/jquery.dirtyforms.min.js.map"></script>
 ```
 
 #### Package Managers
@@ -217,14 +217,6 @@ If the target is a blank browser window, we assume that the page is not going to
 <a href="http://www.google.com" target="_blank">Go to Google</a>
 ```
 
-#### No HREF Attribute
-
-If the href attribute is missing, the link cannot navigate to another page. Note that if the href attribute is added dynamically, the anchor tag will automatically be un-ignored.
-
-```html
-<a>Go Nowhere</a>
-```
-
 #### onClick `return false;`
 
 If the onClick event returns `false`, the click will be ignored by Dirty Forms.
@@ -248,6 +240,8 @@ $('#google-link').click(function (event) {
 	event.preventDefault();
 });
 ```
+
+> **NOTE:** Anchor tags with no HREF were ignored in previous versions of Dirty Forms, but now these tags are included by default. We can't make any assumptions about what an anchor tag does whether or not it has an HREF tag. If you want to ignore them by default, add the `ignoreSelector: 'a:not([href])'`. 
 
 ## Options
 
